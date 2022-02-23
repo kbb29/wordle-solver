@@ -158,10 +158,10 @@ class Env:
         # we still need to account for the fact that the orange characters must appear somewhere in the word
         # is there a good way to do this?
         matching_word_series = df_matching_index.apply(lambda row: row['word'] if validate_against_hint(row['word'], guess, hint) else '', axis=1)
-        matching_words = list(list(word) for word in matching_word_series.values if word)
+        matching_words = list(tuple(word) for word in matching_word_series.values if word)
         print(matching_words)
-        return df.loc[df.index.isin(matching_words)]
-        #return df[matching_words]        
+        #return df.loc[df.index.isin(matching_words)]
+        return df.loc[matching_words]        
         
         
             
