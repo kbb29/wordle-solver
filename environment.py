@@ -1,4 +1,4 @@
-import json, pathlib, random, time
+import json, pathlib, random, time, string
 from collections import defaultdict
 import numpy as np
 import pandas as pd
@@ -32,10 +32,10 @@ def load_word_lists(filen='lists.json'):
 
 def construct_word_df(target_list, guess_list):
     cf = char_freq(target_list + guess_list)
-    dfg = pd.DataFrame([[w, freq_score(w, cf), uniq_score(w), 1.0] for w in guess_list], columns=['word', 'freq_score', 'uniq_score', 'is_guess_word'])
-    dft = pd.DataFrame([[w, freq_score(w, cf), uniq_score(w), 0.0] for w in target_list], columns=['word', 'freq_score', 'uniq_score', 'is_guess_word'])
+    dfg = pd.DataFrame([[w, freq_score(w, cf), uniq_score(w), 1.0] + list(w) for w in guess_list], columns=['word', 'freq_score', 'uniq_score', 'is_guess_word', 'c0','c1','c2','c3','c4'])
+    dft = pd.DataFrame([[w, freq_score(w, cf), uniq_score(w), 0.0] + list(w) for w in target_list], columns=['word', 'freq_score', 'uniq_score', 'is_guess_word', 'c0','c1','c2','c3','c4'])
     df = dfg.append(dft)
-    df.set_index('word', inplace=True)
+    df.set_index(['c0','c1','c2','c3','c4'], inplace=True)
     return df
 
 def hint_to_hinty(hint):
@@ -102,13 +102,77 @@ class Env:
         self.num_guesses = Env.num_guesses
         
         self.action_space = ActionSpace(len(self.df))
+        
+        
+    def find_words_matching_hint(self, df, guess, hint):
+        idx = [slice(None)] * self.num_letters
+        for i,score in enumerate(hint):
+            if score == 2:
+                idx[i] = guess[i]
+                
+        df_matching_green = df.loc[tuple(idx)]
+        
+        print(df_matching_green)
+        
+        alphaset = set(string.ascii_lowercase)
+        orange_chars = set()
+        idx = []
+        for i,score in enumerate(hint):
+            if score == 1:
+                idx.append(alphaset - set(guess[i]))
+                orange_chars.add(guess[i])
+            elif score == 0:
+                idx.append(slice(None))
+            #if score == 2 then append nothing - the first df.loc will result in a df without these columns in the index
+        
+        df_matching_orange = df_matching_green.loc[tuple(idx)]
+        
+        
+        print(df_matching_orange)
+        # now we can slice out the words containing black characters
+        # but we can only do this if the guess does not contain characters
+        # which are labelled as both black and orange
+        # if this is the case it is too complex to do it using indexing
+            
+        black_chars = set([guess[i] for i in range(self.num_letters) if hint[i] == 0])
+        
+        print(black_chars)
+        print(orange_chars)
+        print(black_chars.intersection(orange_chars))
+        if not black_chars.intersection(orange_chars): #if there are no black chars which are also orange
+               
+            valid_chars = alphaset - black_chars
+            idx = []
+            for i,score in enumerate(hint):
+                if score == 0 or score == 1:
+                    idx.append(valid_chars)
+
+
+            print('black index', idx)
+            df_matching_index = df_matching_orange.loc[tuple(idx)]
+            print('done black indexing')
+            print(df_matching_index)
+        else:
+            df_matching_index = df_matching_orange
+        
+        # we still need to account for the fact that the orange characters must appear somewhere in the word
+        # is there a good way to do this?
+        matching_word_series = df_matching_index.apply(lambda row: row['word'] if validate_against_hint(row['word'], guess, hint) else '', axis=1)
+        matching_words = list(list(word) for word in matching_word_series.values if word)
+        print(matching_words)
+        return df.loc[df.index.isin(matching_words)]
+        #return df[matching_words]        
+        
+        
+            
        
         
     def index_from_word(self, word):
-        return self.df.index.get_loc(word)
+        return self.df.index.get_loc(tuple(word))
     
     def word_from_index(self, idx):
-        return self.df.iloc[idx].name
+        idxval = self.df.iloc[idx].name
+        return ''.join(idxval)
     
     def submit_guess(self, guess):
         wrongplace = [0] * len(self.target)
@@ -168,6 +232,7 @@ class Env:
 if __name__ == '__main__':
     df = construct_word_df(*load_word_lists())
     e_simple = Env(df, target_word='abcde')
+    print(e_simple.find_words_matching_hint(df, 'beafy', [0,1,2,0,0]))
     e_simple.reset()
     tests_simple = {'abcde': [2,2,2,2,2],
              'acbde': [2,1,1,2,2],
@@ -213,6 +278,6 @@ if __name__ == '__main__':
         n = random.randint(0, len(e.df))
         w = e.word_from_index(n)
         n_ = e.index_from_word(w)
-        #print(f'{n}, {w}, {n_}')
+        print(f'{n}, {w}, {n_}')
         assert(n == n_)
     
