@@ -110,9 +110,9 @@ class Env:
             if score == 2:
                 idx[i] = guess[i]
                 
-        df_matching_green = df.loc[tuple(idx)]
+        df_matching_green = df.loc[tuple(idx), :]
         
-        print(df_matching_green)
+        #print(df_matching_green)
         
         alphaset = set(string.ascii_lowercase)
         orange_chars = set()
@@ -121,16 +121,15 @@ class Env:
             if score == 1:
                 idx.append(alphaset - set(guess[i]))
                 orange_chars.add(guess[i])
-            elif score == 0:
+            else:
                 idx.append(slice(None))
-            #if score == 2 then append nothing - the first df.loc will result in a df without these columns in the index
+            
+        #print(f'orange index {tuple(idx)}')
+        df_matching_orange = df_matching_green.loc[tuple(idx), :]
         
-        print(f'orange index {tuple(idx)}')
-        df_matching_orange = df_matching_green.loc[tuple(idx)]
         
-        
-        print(df_matching_orange)
-        print(df_matching_orange.index)
+        #print(df_matching_orange)
+        #print(df_matching_orange.index)
         # now we can slice out the words containing black characters
         # but we can only do this if the guess does not contain characters
         # which are labelled as both black and orange
@@ -138,10 +137,8 @@ class Env:
             
         black_chars = set([guess[i] for i in range(self.num_letters) if hint[i] == 0])
         
-        print(black_chars)
-        print(orange_chars)
-        print(black_chars.intersection(orange_chars))
-        if False and not black_chars.intersection(orange_chars): #if there are no black chars which are also orange
+        #print(black_chars, orange_chars, black_chars.intersection(orange_chars))
+        if not black_chars.intersection(orange_chars): #if there are no black chars which are also orange
                
             valid_chars = alphaset - black_chars
             df_matching_index = df_matching_orange
@@ -149,25 +146,29 @@ class Env:
             for i,score in enumerate(hint):
                 if score == 0 or score == 1:
                     idx.append(valid_chars)
-                    #df_matching_index = df_matching_index.loc[valid_chars]
+                else:
+                    idx.append(slice(None))
 
 
             #print('black index', tuple(idx))
-            #print(df_matching_orange.loc[df_matching_orange['c4'] in valid_chars])
             
-            df_matching_index = df_matching_orange.loc[tuple(idx)]
-            print('done black indexing')
-            print(df_matching_index)
+            df_matching_index = df_matching_orange.loc[tuple(idx), :]
+            #print('done black indexing')
+            #print(df_matching_index)
         else:
             df_matching_index = df_matching_orange
-        
+       
         # we still need to account for the fact that the orange characters must appear somewhere in the word
         # is there a good way to do this?
         matching_word_series = df_matching_index.apply(lambda row: row['word'] if validate_against_hint(row['word'], guess, hint) else '', axis=1)
+         
+        #print(matching_word_series.index)
         matching_words = list(tuple(word) for word in matching_word_series.values if word)
         #print(matching_words)
         #return df.loc[df.index.isin(matching_words)]
-        return df.loc[matching_words]        
+        return df.loc[matching_words]
+        
+        #return df_matching_index.loc[lambda row: validate_against_hint(row['word'], guess, hint), :]        
         
         
             
@@ -299,13 +300,32 @@ if __name__ == '__main__':
         'blood': [2,2,2,0,0],
     }
     
+    for i in range(10):
+        choice = df.sample()['word'][0]
+        hints = e_match.submit_guess(choice)
+        tests_match[choice] = hints
+        
+            
+    matching_words = defaultdict(dict)
+    sti = time.time()
     for guess,hint in tests_match.items():
-            #guess = random.choice(guess_list + target_list)
+            print(f'{guess} idx {hint}')
             matching_words_idx = set(e_match.find_words_matching_hint(df, guess, hint)['word'])
+            matching_words['guess']['idx'] = matching_words_idx
+            
+    stb = time.time()
+    for guess, hint in tests_match.items():
+            print(f'{guess} brute {hint}')
             matching_word_series = df.apply(lambda row: row['word'] if validate_against_hint(row['word'], guess, hint) else '', axis=1)
             matching_words_brute = set([word for word in matching_word_series.values if word])
+            matching_words['guess']['brute'] = matching_words_brute
+    ft = time.time()
+    for guess, matches in matching_words.items():
+            matching_words_idx = matches['idx']
+            matching_words_brute = matches['brute']
             print(f'{guess} idx {len(matching_words_idx)} brute {len(matching_words_brute)}')
             print(matching_words_idx - matching_words_brute, matching_words_brute - matching_words_idx)
             assert(matching_words_brute == matching_words_idx)
-            assert('bloke' in matching_words_idx)
-            assert('bloke' in matching_words_brute)
+            assert(e_match.target in matching_words_idx)
+            assert(e_match.target in matching_words_brute)
+    print(f'brute {ft - stb}s, idx {stb - sti}s')
