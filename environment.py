@@ -91,27 +91,44 @@ class ActionSpace:
 class Env:
     num_guesses = 6
     def __init__(self, df, target_word=None):
-        self.df = df
-        self.specified_target_word = False
-        if target_word:
-            self.specified_target_word = True
-            self.target = target_word            
+        self.df = df            
             
-        self.reset()     
+        self.reset(target_word=target_word)     
         self.num_letters = len(self.target)
         self.num_guesses = Env.num_guesses
         
         self.action_space = ActionSpace(len(self.df))
         
+    def find_words_matching_current_history(self):
+        matching_words = self.df
+        for hint,guess in reversed(list(zip(self.history, self.guesses))):
+            # do the last guess first, because this should be the best and should remove most values,
+            # making this more efficient
+            #print(matching_words)
+            matching_words = self.find_words_matching_hint(matching_words, guess, hint)
+            if len(matching_words) == 1:
+                break
+        return matching_words
+    
+    def sample_word_matching_current_history(self):
+        return self.find_words_matching_current_history().sample()['word'][0]
         
     def find_words_matching_hint(self, df, guess, hint):
         idx = [slice(None)] * self.num_letters
+        green_count = 0
         for i,score in enumerate(hint):
             if score == 2:
                 idx[i] = guess[i]
-                
+                green_count += 1
+        
+        if green_count == self.num_letters:
+            return df.loc[[tuple(idx)], :]
+        
         df_matching_green = df.loc[tuple(idx), :]
         
+        #print('hint', hint)
+        #print('green idx', idx)
+        #print('df_matching_green')
         #print(df_matching_green)
         
         alphaset = set(string.ascii_lowercase)
@@ -157,22 +174,23 @@ class Env:
             #print(df_matching_index)
         else:
             df_matching_index = df_matching_orange
+            
        
         # we still need to account for the fact that the orange characters must appear somewhere in the word
         # is there a good way to do this?
-        matching_word_series = df_matching_index.apply(lambda row: row['word'] if validate_against_hint(row['word'], guess, hint) else '', axis=1)
+        if orange_chars:
+            matching_word_series = df_matching_index.apply(lambda row: row['word'] if validate_against_hint(row['word'], guess, hint) else '', axis=1)
          
-        #print(matching_word_series.index)
-        matching_words = list(tuple(word) for word in matching_word_series.values if word)
-        #print(matching_words)
-        #return df.loc[df.index.isin(matching_words)]
-        return df.loc[matching_words]
+            #print(matching_word_series.index)
+            matching_words = list(tuple(word) for word in matching_word_series.values if word)
+            #print(matching_words)
+            #return df.loc[df.index.isin(matching_words)]
+            return df.loc[matching_words]
+        else:
+            return df_matching_index
         
         #return df_matching_index.loc[lambda row: validate_against_hint(row['word'], guess, hint), :]        
         
-        
-            
-       
         
     def index_from_word(self, word):
         return self.df.index.get_loc(tuple(word))
@@ -203,11 +221,14 @@ class Env:
         
         return hints
     
-    def reset(self):
+    def reset(self, target_word=None):
         self.history = np.array([[]])
         self.guesses = []
-        if not self.specified_target_word:
-            self.target = self.df[self.df['is_guess_word'] == 0.0].sample().iloc[0].name
+        if not target_word:
+            self.target = self.df[self.df['is_guess_word'] == 0.0].sample()['word'][0]
+        else:
+            self.target = target_word
+        
         
             
 
@@ -241,7 +262,7 @@ if __name__ == '__main__':
     np.random.seed(0)
     df = construct_word_df(*load_word_lists())
     e_simple = Env(df, target_word='abcde')
-    e_simple.reset()
+    e_simple.reset(target_word='abcde')
     tests_simple = {'abcde': [2,2,2,2,2],
              'acbde': [2,1,1,2,2],
              'azcde': [2,0,2,2,2],
@@ -255,7 +276,7 @@ if __name__ == '__main__':
              'zzdez': [0,0,1,1,0]}
 
     e_repeat = Env(df, target_word='abcae')
-    e_repeat.reset()
+    e_repeat.reset(target_word='abcae')
     tests_repeat = {'abcde': [2,2,2,0,2],
              'acbde': [2,1,1,0,2],
              'azcde': [2,0,2,0,2],
@@ -289,8 +310,22 @@ if __name__ == '__main__':
         print(f'{n}, {w}, {n_}')
         assert(n == n_)
     
+    e_step = Env(df)
+    for i in range(10):
+            e_step.reset()
+            for i in range(e_step.num_guesses):
+                state, reward, done = e_step.step(e_step.sample_word_matching_current_history())
+                if done:
+                    break
+            print(f'finished step test {e_step.target} {e_step.history} {e_step.guesses}')
+            mw = e_step.find_words_matching_current_history()['word'].tolist()
+            print('matching words', mw)
+            assert(e_step.target in mw)
+            if list(e_step.history[-1]) == [2.0] * e_step.num_letters:
+                assert(len(mw) == 1)
+    
     e_match = Env(df, target_word='bloke')
-    e_match.reset()
+    e_match.reset(target_word='bloke')
     
     tests_match = {
         'beefy': [2,1,0,0,0],
@@ -329,3 +364,4 @@ if __name__ == '__main__':
             assert(e_match.target in matching_words_idx)
             assert(e_match.target in matching_words_brute)
     print(f'brute {ft - stb}s, idx {stb - sti}s')
+    
