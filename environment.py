@@ -236,6 +236,12 @@ class Env:
         return self.step(self.word_from_index(guess_idx))
     
     
+    #the reward for each guessed word will be calculated as follows
+    #  define a score for the guess as score = 2 * num_green_letters + num_orange_letters
+    #  calculate the score difference as score_delta = score - previous_best_score_in_this_episode
+    #  reward = max(score_delta, 0)
+    #
+
     def step(self, guess, reconstruct=False): #returns state, reward, done, actions
         #print(actions)
         hints = self.submit_guess(guess)
