@@ -99,8 +99,21 @@ class Env:
         
         self.action_space = ActionSpace(len(self.df))
         
+    def find_words_with_most_new_letters(self, df):
+        #calcuate num_untried letters for all words
+        num_untried_letters = df.apply(lambda row: len(set(row['word']) - set(''.join(self.guesses))), axis=1)
+        #select only the rows which have the max value 
+        return df.loc[num_untried_letters == num_untried_letters.max()]
+        #this works because num_untried_letters == x returns a series whose index is the same size as df
+    
+    def find_words_with_highest_freq_score(self, df):
+        return df.loc[df['freq_score'] == df['freq_score'].max()]
+    
     def find_words_matching_current_history(self):
-        matching_words = self.df
+        return self.find_words_matching_history(self.df)
+    
+    def find_words_matching_history(self, df):
+        matching_words = df
         for hint,guess in reversed(list(zip(self.history, self.guesses))):
             # do the last guess first, because this should be the best and should remove most values,
             # making this more efficient
@@ -269,6 +282,11 @@ if __name__ == '__main__':
     df = construct_word_df(*load_word_lists())
     e_simple = Env(df, target_word='abcde')
     e_simple.reset(target_word='abcde')
+    
+    print(e_simple.find_words_with_most_new_letters(df))
+    
+    print(e_simple.find_words_with_highest_freq_score(df))
+
     tests_simple = {'abcde': [2,2,2,2,2],
              'acbde': [2,1,1,2,2],
              'azcde': [2,0,2,2,2],
@@ -280,6 +298,8 @@ if __name__ == '__main__':
              'ddddd': [0,0,0,2,0],
              'zzzdd': [0,0,0,2,0],
              'zzdez': [0,0,1,1,0]}
+    print('>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>')
+    
 
     e_repeat = Env(df, target_word='abcae')
     e_repeat.reset(target_word='abcae')

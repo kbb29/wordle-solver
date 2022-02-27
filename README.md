@@ -44,19 +44,26 @@ The reward for each guessed word will be calculated as follows
 
 ### Intial Results
 
-You can see from the duration curve that this seems to beat the Naive model, acheiving about 3.75 guesses per episode.  Training is very slow however, because the a lot of computation is required to produce the action vectors (and we have to calculate *all* the action vectors to identify the best candidate).
+You can see from the duration curve that this seems to beat the Naive model, acheiving about 3.75 guesses per episode.  It frequently chooses the words "oater" or "arose" as the first guess in each episode.  Training is very slow however, because the a lot of computation is required to produce the action vectors (and we have to calculate *all* the action vectors to identify the best candidate).
 
 
 ## Policy Gradient Approach
 
 NOT IMPLEMENTED YET
 
-The aim here is to use a NN to represent the policy, rather than the value function.  We will simplify the actions (ie, so that we have a few actions, rather than 12000): 
+The aim here is to use a NN to represent the policy, rather than the value function.  We will shrink the action space (ie, so that we have a few actions, rather than 12000).  This will remove the model's ability to learn novel strategies, rather it will just be learning when to employ the different strategies (actions) that I give it.  Start with these 3 word selection tactics:
 
-1. choose a word which matches the current history
-1. choose a word which contains the greatest number of new letters
-1. choose a word which has the highest frequency score
-1. choose a word which has the highest uniquness score
+1. choose words which match the current history
+1. choose words which contain the greatest number of new letters
+1. choose words which have the highest frequency score
+
+then we will construct 6 actions by choosing every possible order of these strategies
+1. 1,2,3
+1. 1,3,2
+1. 2,1,3
+1. 2,3,1
+1. 3,1,2
+1. 3,2,1
 
 for all these actions there may be multiple words, so sample a random one.  The policy then becomes a logistic regressor which selects one of these actions to execute.  The loss to train the regressor will be derived using the policy gradiet theorem.
 
