@@ -44,7 +44,7 @@ The reward for each guessed word will be calculated as follows
 
 ### Intial Results
 
-You can see from the duration curve that this seems to beat the Naive model, acheiving about 3.75 guesses per episode.  Performance is poor however, because the a lot of computation is required to produce the action vectors (and we have to calculate *all* the action vectors to identify the best candidate).
+You can see from the duration curve that this seems to beat the Naive model, acheiving about 3.75 guesses per episode.  Training is very slow however, because the a lot of computation is required to produce the action vectors (and we have to calculate *all* the action vectors to identify the best candidate).
 
 
 ## Policy Gradient Approach
