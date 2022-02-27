@@ -9,6 +9,7 @@ Wordle has a hard-coded list of ~2000 potential target words, and a further ~100
 ## [Naive Approach](Naive.ipynb) 
 
 ![naive-duration](diagrams/naive-duration.png)
+
 This is a simple model which doesn't learn.  It uses a given word for the first guess (eg. 'roate', 'oater', 'arose') and then it chooses a random word (from the ~2000 target words) which matches all of the hints given.  It completes a wordle episode in an average of about 4.75 guesses.
 
 
