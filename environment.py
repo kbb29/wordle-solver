@@ -262,17 +262,17 @@ class Env:
         #print(list(zip(self.guesses,self.history)))
         if self.history.size == 0:
             self.history = np.expand_dims(hints,0)
-            best_hints = 0
+            #best_hints = 0
         else:
-            best_hints = np.apply_along_axis(np.sum, 1, self.history).max()
+            #best_hints = np.apply_along_axis(np.sum, 1, self.history).max()
             self.history = np.row_stack([self.history, hints])
             
         #print(f'======={guess} ({self.target}) => {hints}= {best_hints} =======')
         
         self.guesses.append(guess)
-        reward = max(0, hints.sum() - best_hints)
+        #reward = max(0, hints.sum() - best_hints)
         done = (hints.sum() == self.num_letters * 2 or len(self.guesses) == self.num_guesses)
-    
+        reward = float(hints.sum() == self.num_letters * 2) - 1.0
         #state = self.construct_state()
         return self.history, reward, done
     
