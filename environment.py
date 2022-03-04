@@ -98,6 +98,9 @@ class Env:
         self.num_guesses = Env.num_guesses
         
         self.action_space = ActionSpace(len(self.df))
+    
+    def find_target_words(self, df):
+        return self.df.loc[self.df['is_guess_word'] == 0.0]
         
     def find_words_with_most_new_letters(self, df):
         #calcuate num_untried letters for all words
@@ -109,10 +112,7 @@ class Env:
     def find_words_with_highest_freq_score(self, df):
         return df.loc[df['freq_score'] == df['freq_score'].max()]
     
-    def find_words_matching_current_history(self):
-        return self.find_words_matching_history(self.df)
-    
-    def find_words_matching_history(self, df):
+    def find_words_matching_current_history(self, df):
         matching_words = df
         for hint,guess in reversed(list(zip(self.history, self.guesses))):
             # do the last guess first, because this should be the best and should remove most values,
@@ -123,8 +123,8 @@ class Env:
                 break
         return matching_words
     
-    def sample_word_matching_current_history(self):
-        return self.find_words_matching_current_history().sample()['word'][0]
+    def sample_word_matching_current_history(self, df):
+        return self.find_words_matching_current_history(df).sample()['word'][0]
         
     def find_words_matching_hint(self, df, guess, hint):
         idx = [slice(None)] * self.num_letters
@@ -137,12 +137,16 @@ class Env:
         if green_count == self.num_letters:
             return df.loc[[tuple(idx)], :]
         
-        df_matching_green = df.loc[tuple(idx), :]
+        
         
         #print('hint', hint)
         #print('green idx', idx)
-        #print('df_matching_green')
-        #print(df_matching_green)
+        #print(df)
+        try:
+            df_matching_green = df.loc[tuple(idx), :]
+        except KeyError:
+            return pd.DataFrame()
+        
         
         alphaset = set(string.ascii_lowercase)
         orange_chars = set()
@@ -155,7 +159,10 @@ class Env:
                 idx.append(slice(None))
             
         #print(f'orange index {tuple(idx)}')
-        df_matching_orange = df_matching_green.loc[tuple(idx), :]
+        try:
+            df_matching_orange = df_matching_green.loc[tuple(idx), :]
+        except KeyError:
+            return pd.DataFrame()
         
         
         #print(df_matching_orange)
@@ -182,7 +189,10 @@ class Env:
 
             #print('black index', tuple(idx))
             
-            df_matching_index = df_matching_orange.loc[tuple(idx), :]
+            try:
+                df_matching_index = df_matching_orange.loc[tuple(idx), :]
+            except KeyError:
+                return pd.DataFrame()
             #print('done black indexing')
             #print(df_matching_index)
         else:
@@ -196,6 +206,8 @@ class Env:
          
             #print(matching_word_series.index)
             matching_words = list(tuple(word) for word in matching_word_series.values if word)
+            if len(matching_words) == 0:
+                return pd.DataFrame()
             #print(matching_words)
             #return df.loc[df.index.isin(matching_words)]
             return df.loc[matching_words]
@@ -271,8 +283,13 @@ class Env:
         
         self.guesses.append(guess)
         #reward = max(0, hints.sum() - best_hints)
-        done = (hints.sum() == self.num_letters * 2 or len(self.guesses) == self.num_guesses)
-        reward = float(hints.sum() == self.num_letters * 2) - 1.0
+
+        if hints.sum() == self.num_letters * 2:
+            done = True
+            reward = 0
+        else:
+            done = (len(self.guesses) == self.num_guesses)
+            reward = -1
         #state = self.construct_state()
         return self.history, reward, done
     
@@ -340,11 +357,11 @@ if __name__ == '__main__':
     for i in range(10):
             e_step.reset()
             for i in range(e_step.num_guesses):
-                state, reward, done = e_step.step(e_step.sample_word_matching_current_history())
+                state, reward, done = e_step.step(e_step.sample_word_matching_current_history(e_step.df))
                 if done:
                     break
             print(f'finished step test {e_step.target} {e_step.history} {e_step.guesses}')
-            mw = e_step.find_words_matching_current_history()['word'].tolist()
+            mw = e_step.find_words_matching_current_history(e_step.df)['word'].tolist()
             print('matching words', mw)
             assert(e_step.target in mw)
             if list(e_step.history[-1]) == [2.0] * e_step.num_letters:
