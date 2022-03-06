@@ -20,6 +20,9 @@ def print_char_freq(cf):
 def freq_score(word, cf):
     return sum(cf[x] for x in word) / len(word) 
 
+def freq_score_raw(word, cf):
+    return sum(cf[x] for x in word)
+
 def uniq_score(word):
     return (len(word) - len(set(word))) / (len(word) - 2)
 
@@ -98,17 +101,29 @@ class Env:
         self.num_guesses = Env.num_guesses
         
         self.action_space = ActionSpace(len(self.df))
+        
+        self.char_freqs = char_freq(self.find_target_words(self.df).index)
     
     def find_target_words(self, df):
         return self.df.loc[self.df['is_guess_word'] == 0.0]
         
     def find_words_with_most_new_letters(self, df):
         #calcuate num_untried letters for all words
-        num_untried_letters = df.apply(lambda row: len(set(row['word']) - set(''.join(self.guesses))), axis=1)
+        tried_letters = set(''.join(self.guesses))
+        num_untried_letters = df.apply(lambda row: len(set(row['word']) - tried_letters), axis=1)
         #select only the rows which have the max value 
         return df.loc[num_untried_letters == num_untried_letters.max()]
         #this works because num_untried_letters == x returns a series whose index is the same size as df
-    
+
+    def find_words_with_highest_new_letter_freq_score(self, df):
+        tried_letters = set(''.join(self.guesses))
+        #new_letters = df.apply(lambda row: set(row['word'])- tried_letters, axis=1)
+        #print(f'tried_letters {tried_letters}')
+        #print(f'new_letters {new_letters}')
+        new_letter_freq_score = df.apply(lambda row: freq_score_raw(set(row['word']) - tried_letters, self.char_freqs), axis=1)
+        return df.loc[new_letter_freq_score == new_letter_freq_score.max()]
+        
+        
     def find_words_with_highest_freq_score(self, df):
         return df.loc[df['freq_score'] == df['freq_score'].max()]
     
@@ -252,10 +267,7 @@ class Env:
         if not target_word:
             self.target = self.df[self.df['is_guess_word'] == 0.0].sample()['word'][0]
         else:
-            self.target = target_word
-        
-        
-            
+            self.target = target_word  
 
     def step_by_index(self, guess_idx):
         return self.step(self.word_from_index(guess_idx))
@@ -298,12 +310,33 @@ if __name__ == '__main__':
     np.random.seed(0)
     df = construct_word_df(*load_word_lists())
     e_simple = Env(df, target_word='abcde')
+    e_simple.reset(target_word='ttttt')
+    
+    nl = e_simple.find_words_with_most_new_letters(df)
+    fs = e_simple.find_words_with_highest_freq_score(df)
+    nlfs= e_simple.find_words_with_highest_new_letter_freq_score(df)
+    nondupe_words = [w for w in df['word'].values if len(set(w)) == 5]
+    #print('nl: ', nl)
+    #print('fs: ', fs)
+    #print('nlfs: ', nlfs)
+    assert(len(nl) == len(nondupe_words))
+    assert(fs['word'].values == ['esses'])
+    assert(set(nlfs['word'].values) == {'roate', 'oater', 'orate'})
+    
+    e_simple.step('tttll')
+    nl = e_simple.find_words_with_most_new_letters(df)
+    fs = e_simple.find_words_with_highest_freq_score(df)
+    nlfs= e_simple.find_words_with_highest_new_letter_freq_score(df)
+    nondupe_words = [w for w in df['word'].values if len(set(w)) == 5 and 't' not in w and 'l' not in w]
+    #print('nl: ', nl)
+    #print('fs: ', fs)
+    #print('nlfs: ', nlfs)
+    
+    assert(len(nl) == len(nondupe_words))
+    assert(fs['word'].values == ['esses'])
+    assert(set(nlfs['word'].values) == {'arose', 'soare', 'aeros'})
+    
     e_simple.reset(target_word='abcde')
-    
-    print(e_simple.find_words_with_most_new_letters(df))
-    
-    print(e_simple.find_words_with_highest_freq_score(df))
-
     tests_simple = {'abcde': [2,2,2,2,2],
              'acbde': [2,1,1,2,2],
              'azcde': [2,0,2,2,2],
