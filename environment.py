@@ -34,7 +34,7 @@ def load_word_lists(filen='lists.json'):
     return j['target'], j["guess"]
 
 def construct_word_df(target_list, guess_list):
-    cf = char_freq(target_list + guess_list)
+    cf = char_freq(target_list)# + guess_list)
     dfg = pd.DataFrame([[w, freq_score(w, cf), uniq_score(w), 1.0] + list(w) for w in guess_list], columns=['word', 'freq_score', 'uniq_score', 'is_guess_word', 'c0','c1','c2','c3','c4'])
     dft = pd.DataFrame([[w, freq_score(w, cf), uniq_score(w), 0.0] + list(w) for w in target_list], columns=['word', 'freq_score', 'uniq_score', 'is_guess_word', 'c0','c1','c2','c3','c4'])
     df = dfg.append(dft)
