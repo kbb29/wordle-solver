@@ -305,6 +305,11 @@ class Env:
         #state = self.construct_state()
         return self.history, reward, done
     
+    def foreach_target_word(self):
+        for idx,row in self.find_target_words(self.df).iterrows():
+            self.reset(target_word=row['word'])
+            yield self
+    
 if __name__ == '__main__':
     random.seed(0)
     np.random.seed(0)
@@ -320,7 +325,7 @@ if __name__ == '__main__':
     #print('fs: ', fs)
     #print('nlfs: ', nlfs)
     assert(len(nl) == len(nondupe_words))
-    assert(fs['word'].values == ['esses'])
+    assert(fs['word'].values == ['areae'])
     assert(set(nlfs['word'].values) == {'roate', 'oater', 'orate'})
     
     e_simple.step('tttll')
@@ -333,7 +338,7 @@ if __name__ == '__main__':
     #print('nlfs: ', nlfs)
     
     assert(len(nl) == len(nondupe_words))
-    assert(fs['word'].values == ['esses'])
+    assert(fs['word'].values == ['areae'])
     assert(set(nlfs['word'].values) == {'arose', 'soare', 'aeros'})
     
     e_simple.reset(target_word='abcde')
