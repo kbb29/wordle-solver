@@ -122,7 +122,14 @@ class Env:
         #print(f'new_letters {new_letters}')
         new_letter_freq_score = df.apply(lambda row: freq_score_raw(set(row['word']) - tried_letters, self.char_freqs), axis=1)
         return df.loc[new_letter_freq_score == new_letter_freq_score.max()]
-        
+    
+    def find_words_which_eliminate_most_candidates(self, df):
+        #TODO
+        #df will contain the remaining possible target words
+        #we will test all the words to see which candidate word (from all 12k words in the df)
+        #  has the highest match score summed over all the words in df
+        #where match score is the number of unknown letters that two words have in common
+        pass
         
     def find_words_with_highest_freq_score(self, df):
         return df.loc[df['freq_score'] == df['freq_score'].max()]
