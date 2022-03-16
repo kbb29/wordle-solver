@@ -49,23 +49,19 @@ You can see from the duration curve that this seems to beat the Naive model, ach
 
 ## Policy Gradient Approach
 
-NOT IMPLEMENTED YET
+The aim here is to use a NN to represent the policy, rather than the value function.  We will shrink the action space (ie, so that we have a few actions, rather than 12000).  This will remove the model's ability to learn novel strategies, rather it will just be learning when to employ the different strategies (actions) that I give it.  Start with these 3 actions:
 
-The aim here is to use a NN to represent the policy, rather than the value function.  We will shrink the action space (ie, so that we have a few actions, rather than 12000).  This will remove the model's ability to learn novel strategies, rather it will just be learning when to employ the different strategies (actions) that I give it.  Start with these 3 word selection tactics:
+1. choose a word which matches the current history
+1. choose a word whose new letters have the highest frequency score
+1. choose a word which eliminates the greatest number of candidate target words (NOT IMPLEMENTED YET)
 
-1. choose words which match the current history
-1. choose words which contain the greatest number of new letters
-1. choose words which have the highest frequency score
+for all these actions there may be multiple words, so sample a random one.  The policy can then be:
 
-then we will construct 6 actions by choosing every possible order of these strategies
-1. 1,2,3
-1. 1,3,2
-1. 2,1,3
-1. 2,3,1
-1. 3,1,2
-1. 3,2,1
-
-for all these actions there may be multiple words, so sample a random one.  The policy then becomes a logistic regressor which selects one of these actions to execute.  The loss to train the regressor will be derived using the policy gradiet theorem.
+1. the average reward calculated directly for each state (using a simplified state which is just the guess number)
+1. the probability of each action for each state calculated using the policy gradient theorem (using a simplified state which is just the guess number)
+2. a logistic regressor which selects one of these actions to execute.  The loss to train the regressor will be derived using the policy gradient theorem.  The input to the regressor will be all the state vars
+1. a nn regressor
+1. a hybrid regressor which has a different linear regressor for each guess (each step of the episode)
 
 
 ## Actor-Critic Approach
@@ -73,3 +69,35 @@ for all these actions there may be multiple words, so sample a random one.  The 
 NOT IMPLEMENTED YET
 
 The aim here is to use a NN to represent the policy *and* the value function. In this case though we will learn the state-value function v.  We will use our estimate of the value function to train the policy network.  We will use the same actions as the policy gradient approach. 
+
+
+# Outcomes
+
+To test the different approaches, I ran trained models against every possible target word, and calculated a histogram (like the wordle website shows you after every episode).
+
+## Naive Model
+
+![naive-hist](diagrams/naive-hist.png)
+
+average duration 4.731 steps
+
+## Q-Learning Model
+
+![q-hist](diagrams/q-hist.png)
+
+average duration 3.799 steps
+
+## Policy Gradient Models
+
+![pg-hist](diagrams/pg-hist.png)
+
+average duration 3.955 steps
+
+The q-learning model wins.  But PG also beat the naive model.
+
+
+# Futher Work
+
+1. implement the 3rd action for the policy models
+1. implement actor-critic
+1. refactor the final experiment so that a single function is runs all the models.  This will be more scientific, and ensure that there are no differences in the way that the final test is run.

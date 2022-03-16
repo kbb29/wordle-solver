@@ -3,6 +3,34 @@ from collections import defaultdict
 import numpy as np
 import pandas as pd
 
+import matplotlib.pyplot as plt
+
+def plot_performance_hist(data): #data will be a list
+    data.append( data[0])
+
+    # Fixing random state for reproducibility
+    np.random.seed(19680801)
+
+
+    plt.rcdefaults()
+    fig, ax = plt.subplots()
+
+    ax.barh([1,2,3,4,5,6,7], list(data[1:]), align='center', color='green')
+    ax.set_yticks([1,2,3,4,5,6,7])
+    ax.set_yticklabels(['1','2','3','4','5','6','fail'])
+    ax.invert_yaxis()  # labels read top-to-bottom
+    ax.set_xlabel('count')
+    
+    tot_duration = 0
+    num_episodes = 0
+    for n,count in enumerate(data):
+        if n > 0:
+            tot_duration += n*count
+            num_episodes += count
+    avg_duration = tot_duration / num_episodes
+    print(f'avg duration over {num_episodes} episodes: {avg_duration}')
+    plt.show()
+
 def char_freq(lst):
     hist = defaultdict(int)
     for word in lst:
